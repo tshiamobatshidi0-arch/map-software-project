@@ -242,7 +242,7 @@ export default function CrimeMap() {
       <Map center={[-77.0369, 38.9072]} zoom={11}>
         <MapClusterLayer<CrimeProperties>
           // 2. Use your DC Gov URL here
-          data={`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent('lenasia,South Africa')}&format=json&apiKey=5e7b1eab70f24694a61d4362ce38f88e`}
+          data={`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent('petoria,south africa')}&format=json&apiKey=5e7b1eab70f24694a61d4362ce38f88e`}
           clusterRadius={40}
           pointColor="#ff4d4d"
           onPointClick={(feature, coordinates) => {
