@@ -3,12 +3,13 @@ import Layout from './components/Layout.tsx'
 import HomePage from './pages/HomePage.tsx'
 import MapLayout from './pages/MapPage.tsx'
 import MapCurrent from './pages/MapCurrent.tsx'
-import OsrmRouteExample from './pages/test.tsx'
+import Test from './pages/test.tsx'
 import StartSession from './pages/StartSession.tsx'
 import SignInPage , {action as signInAction} from './pages/SignInPage.tsx'
 import LoginPage, {action as loginAction} from "./pages/LoginPage.tsx"
 import AccountHolder , {loader as accountHolderLoader} from "./pages/AccountHolder.tsx"
 import { loggIn } from "./lib/utils.ts"
+import HistoralEvents from "./pages/HistoricalEvents.tsx"
 //sekelton for app 
 
 function App() {
@@ -26,7 +27,7 @@ function App() {
                 />
               <Route 
                    path="about" 
-                   element={<OsrmRouteExample/>}
+                   element={<Test/>}
                 />
               <Route 
                   path="contact" 
@@ -44,7 +45,7 @@ function App() {
                     />
                   <Route 
                      path="historical_events" 
-                     element={<h1>Current location</h1>}
+                     element={<HistoralEvents/>}
                      loader={()=>loggIn("login first to use map")}
                    />
                   <Route 
