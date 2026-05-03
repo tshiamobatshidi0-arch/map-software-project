@@ -5,6 +5,7 @@ import { ChevronsLeft, ChevronsRight, MapPin, ShieldCheck, Zap } from 'lucide-re
 import { newsItems, displayMessageToScreen } from "../lib/utils";
 import { type NewsItem } from "../lib/types"
 import { useNavigate } from "react-router";
+import spaceImage from "../assets/space_image.jpg"
 
 export default function HomePage(): React.JSX.Element {
     const [blurEffect, setBlurEffect] = useState<boolean>(false)
@@ -27,12 +28,13 @@ export default function HomePage(): React.JSX.Element {
             
             {/* HERO SECTION: Minimalist & Focused */}
             <section className="relative h-[90vh] w-full flex items-center justify-center overflow-hidden">
-                <video 
+                {/* <video 
                     autoPlay playsInline loop muted 
                     className="absolute top-0 left-0 w-full h-full object-cover z-0 opacity-40 scale-105"
                 >
                     <source src={videoImage} type="video/mp4" />
-                </video>
+                </video> */}
+                <img src={spaceImage} alt="Space Background" className="absolute top-0 left-0 w-full h-full object-cover z-0 opacity-40 scale-105" />
                 
                 <div className="relative z-10 w-full h-full bg-gradient-to-b from-transparent via-black/20 to-[#050505] flex flex-col items-center justify-center px-6 text-center">
                     <div className="max-w-3xl space-y-8">
