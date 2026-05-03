@@ -10,6 +10,7 @@ import LoginPage, {action as loginAction} from "./pages/LoginPage.tsx"
 import AccountHolder , {loader as accountHolderLoader} from "./pages/AccountHolder.tsx"
 import { loggIn } from "./lib/utils.ts"
 import HistoralEvents from "./pages/HistoricalEvents.tsx"
+import CurrentEventMap from "./pages/CurrentEventMap.tsx"
 //sekelton for app 
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
               <Route 
                  index 
                  element={<HomePage/>}
+         
                 />
               <Route 
                    path="about" 
@@ -50,7 +52,7 @@ function App() {
                    />
                   <Route 
                      path="current_events" 
-                     element={<h1>Current location</h1>}
+                     element={<CurrentEventMap/>}
                      loader={()=>loggIn("login first to use map")}
                   />
                   <Route 
@@ -92,6 +94,8 @@ function App() {
 }
 
 export default App 
+
+
 
 
 
