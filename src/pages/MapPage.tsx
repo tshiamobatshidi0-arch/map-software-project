@@ -1,16 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet } from "react-router";
+import { NavLink, Outlet, useNavigate } from "react-router";
 import { 
   Mountain, Zap, Map as MapIcon, 
   ShieldCheck, History, Radio, 
   Layers, Navigation2, Search, 
-  AlertTriangle 
+  AlertTriangle, 
+  MapPin,
+  TriangleAlert
 } from "lucide-react";
-import { Map, MapControls, type MapRef } from "@/components/ui/map";
+import { Map, MapControls, MapMarker, MarkerContent, MarkerPopup, type MapRef } from "@/components/ui/map";
 import type { LngLatLike } from "maplibre-gl";
 import DialogDemo from "../components/Popup";
 import { Button } from "@/components/ui/button";
 import DrawerToggleBtn from "../components/DrawerModifed";
+import { motion, AnimatePresence } from "framer-motion";
+import spaceImage from "../assets/space_image.jpg"
+
+
+
+
 
 export default function MapPage(): React.JSX.Element {
   const styles = {
@@ -19,21 +27,105 @@ export default function MapPage(): React.JSX.Element {
     openstreetmap3d: "https://tiles.openfreemap.org/styles/liberty",
   };
 
+  // Constants for rotation speed
+const ROTATION_SPEED = 0.05;
+
+  const apiKey = "5e7b1eab70f24694a61d4362ce38f88e"; 
+
+ const navigate = useNavigate()
+
+  const [display, setDisplay] = useState(false);
+
   type StyleKey = keyof typeof styles;
   const [coords, setCoords] = useState<LngLatLike | undefined>([28.1914, -25.7566]);
   const [locationSearched, setLocationSearched] = useState({ name: "", lon: 0, lat: 0 });
   const [dataSuggested, setDataSuggested] = useState([]);
   const [style, setStyle] = useState<StyleKey>("default");
-  
   const mapRef = useRef<MapRef>(null);
   const is3D = style === "openstreetmap3d";
   const selectedStyle = styles[style];
+  const [report , setReport] = useState<boolean>(false)
+  const [draggableMarker, setDraggableMarker] = useState({
+    lng: (coords[0] as number),
+    lat: (coords[1] as number),
+  });
 
+useEffect(() => {
+  const map = mapRef.current;
+  if (!map) return;
+
+  let animationId: number;
+
+  const rotateGlobe = () => {
+    // Get the current center
+    const center = map.getCenter();
+    
+    // Increment the longitude
+    // We use a small increment for smoothness
+    const newLng = (center.lng + ROTATION_SPEED) % 360;
+
+    // Use easeTo or setCenter for the movement
+    // 'duration: 0' makes it move instantly per frame for a smooth flow
+    map.easeTo({
+      center: [newLng, center.lat],
+      duration: 0,
+      easing: (t) => t,
+    });
+
+    animationId = requestAnimationFrame(rotateGlobe);
+  };
+
+  const zoom = map.getZoom();
+  if (zoom < 5) {
+    rotateGlobe();
+  }
+
+  // Cleanup on unmount
+  return () => {
+    if (animationId) cancelAnimationFrame(animationId);
+  };
+}, [coords]);
+
+
+useEffect(() => {
+  const map = mapRef.current;
+  let userInteracting = false;
+  let animationId: number;
+
+  const onInteractionStart = () => { userInteracting = true; };
+  const onInteractionEnd = () => { 
+    userInteracting = false; 
+    rotateGlobe(); // Restart
+  };
+
+  const rotateGlobe = () => {
+    if (userInteracting) return; 
+    
+    const center = map?.getCenter();
+    map?.easeTo({
+      center: [center?.lng|| 0 + 0.5, center?.lat|| 0 ],
+      duration: 0,
+      easing: t => t
+    });
+    animationId = requestAnimationFrame(rotateGlobe);
+  };
+
+  map?.on('dragstart', onInteractionStart);
+  map?.on('moveend', onInteractionEnd);
+
+  if(is3D) mapRef.current?.easeTo({ pitch: is3D ? 60 : 0, duration: 800 });
+
+  return () => {
+    map?.off('dragstart', onInteractionStart);
+    map?.off('moveend', onInteractionEnd);
+    cancelAnimationFrame(animationId);
+  };
+}, [is3D]);
 
 
  useEffect(() => {
-    mapRef.current?.easeTo({ pitch: is3D ? 60 : 0, duration: 800 });
-  }, [is3D]);
+   
+  });
 
   // 2. LOGIC: Handle Geolocation (Run once on mount)
   useEffect(() => {
@@ -47,6 +139,8 @@ export default function MapPage(): React.JSX.Element {
     // Cleanup on unmount
     return () => navigator.geolocation.clearWatch(id);
   }, []);
+
+
 
   // 3. LOGIC: Handle Search API (Debounced)
   useEffect(() => {
@@ -85,6 +179,10 @@ export default function MapPage(): React.JSX.Element {
         : "text-slate-500 hover:bg-white hover:text-blue-600 shadow-sm"
     }`;
 
+  const handleFlyTo = (coords: [number, number]) => {
+    // Access the MapLibre GL map instance via ref
+        mapRef.current?.flyTo({ center: [coords[0] , coords[1]], zoom: 12 });
+  };
   return (
     <main className="relative h-screen w-full overflow-hidden font-sans antialiased text-slate-900">
       
@@ -119,47 +217,133 @@ export default function MapPage(): React.JSX.Element {
         </div>
 
         <div className="flex flex-col gap-3 pointer-events-auto">
-          <Button className="h-12 px-6 bg-red-500 hover:bg-red-600 text-white rounded-2xl shadow-xl shadow-red-200 border-none transition-transform active:scale-95 flex gap-2">
+          <Button 
+            className="h-12 px-6 bg-red-500 hover:bg-red-600
+                       text-white rounded-2xl
+                       shadow-xl shadow-red-200 border-none
+                        transition-transform 
+                       active:scale-95 flex gap-2"
+            onClick={() => {
+                setReport(prev => !prev)
+                handleFlyTo([draggableMarker.lng, draggableMarker.lat])
+            }
+          }
+          
+               
+          >
             <AlertTriangle size={18} />
             <span className="font-bold">Report Danger</span>
           </Button>
         </div>
       </header>
 
-      {/* 2. LEFT DOCK: Navigation */}
+      <button 
+         onClick={() => handleFlyTo(coords as [number, number])}
+         className="absolute top-24 right-6 z-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg transition-transform active:scale-95">
+          locationSearched
+      </button>
+
+            {/* 2. LEFT DOCK: Navigation */}
       <nav className="absolute left-6 top-1/2 -translate-y-1/2 z-[1000] flex flex-col gap-4 bg-white/60 backdrop-blur-2xl p-3 rounded-[32px] shadow-2xl border border-white/50">
-        <NavLink to="../map" end className={navLinkClasses}>
-          <MapIcon size={22} />
-        </NavLink>
-        <NavLink to="historical_events" className={navLinkClasses}>
-          <History size={22} />
-        </NavLink>
-        <NavLink to="current_events" className={navLinkClasses}>
-          <Radio size={22} />
-        </NavLink>
-        <NavLink to="safe_route" className={navLinkClasses}>
-          <ShieldCheck size={22} />
-        </NavLink>
-        
-        <div className="h-[1px] w-8 bg-slate-300 mx-auto my-2" />
-        
-        <button className="flex items-center justify-center w-12 h-12 rounded-2xl text-slate-500 hover:bg-white hover:text-blue-600 transition-all">
-          <Layers size={22} />
+        <AnimatePresence>
+          {display && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, scale: 0.8 }}
+              animate={{ opacity: 1, height: "auto", scale: 1 }}
+              exit={{ opacity: 0, height: 0, scale: 0.8 }}
+              transition={{ duration: 0.3, ease: "circOut" }}
+              className="flex flex-col gap-4 overflow-hidden"
+            >
+              <NavLink to="../map" end className={navLinkClasses}>
+                <MapIcon size={22} />
+              </NavLink>
+              <NavLink to="historical_events" className={navLinkClasses}>
+                <History size={22} />
+              </NavLink>
+              <NavLink to="current_events" className={navLinkClasses}>
+                <Radio size={22} />
+              </NavLink>
+              <NavLink to="safe_route" className={navLinkClasses}>
+                <ShieldCheck size={22} />
+              </NavLink>
+              {/* Decorative Divider */}
+              <div className="h-px bg-white/40 mx-2" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <button 
+          onClick={() => setDisplay(prev => !prev)}
+          className="flex items-center justify-center w-12 h-12 rounded-2xl text-slate-500 hover:bg-white hover:text-blue-600 transition-all active:scale-90"
+        >
+          <motion.div
+            animate={{ rotate: display ? 90 : 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+          >
+            <Layers size={22} />
+          </motion.div>
         </button>
-      </nav>
+      </nav>t
 
       {/* 3. MAP AREA */}
-      <section className="absolute inset-0 z-0">
+      <section 
+         style={{ 
+              backgroundImage: `url(${spaceImage})`, 
+              backgroundSize: 'cover', 
+              backgroundPosition: 'center' 
+        }}
+        className="absolute inset-0 z-0">
         <Map
+          projection={{ type: "globe" }}
           ref={mapRef}
           center={coords}
-          zoom={12}
+          zoom={3}
           styles={selectedStyle ? { light: selectedStyle, dark: selectedStyle } : undefined}
         >
           <div className="absolute bottom-10 right-10">
              <MapControls position="bottom-right" />
           </div>
-          <Outlet context={{ coords, locationSearched }} />
+         {report && (
+            <MapMarker
+             draggable
+             longitude={draggableMarker.lng}
+             latitude={draggableMarker.lat}
+             onDrag={(lngLat) => {
+                  setDraggableMarker({ lng: lngLat.lng, lat: lngLat.lat });
+                 }}
+              onDragEnd={(lngLat) => {
+                  setDraggableMarker({ lng: lngLat.lng, lat: lngLat.lat });
+                 }}
+            >
+                              <MarkerContent>
+                <div className="relative group cursor-crosshair">
+                  <div className="absolute inset-0 -m-6 rounded-full bg-red-500/10 border border-red-500/20 animate-ping" />
+                  <div className="relative z-10 bg-red-600 p-2.5 rounded-xl shadow-lg border border-red-400">
+                    <TriangleAlert size={18} className="text-white" />
+                  </div>
+                </div>
+              </MarkerContent>
+              <MarkerPopup>
+                <div className="bg-[#0d1117] text-white p-4 rounded-2xl border border-white/10 shadow-3xl min-w-[180px]">
+                  <h4 className="text-[9px] font-black uppercase tracking-widest text-red-500 mb-3">Signal Location</h4>
+                  <Button 
+                    className="w-full bg-red-600 hover:bg-red-700 h-8 rounded-lg text-[10px] font-bold border-none"
+                    onClick={async() => {
+                const response = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${draggableMarker.lat}&lon=${draggableMarker.lng}&format=json&apiKey=${apiKey}`);
+                const data = await response.json();
+                console.log("Reverse Geocoding Result:", data);
+               // navigate(`/map?name=${encodeURIComponent(data.results?.[0].formatted.name)}&lon=${draggableMarker.lng}&lat=${draggableMarker.lat}`);
+                setReport(prev => !prev) 
+            }}
+                  >
+                    Confirm Report
+                  </Button>
+                </div>
+              </MarkerPopup>
+       
+       
+            </MapMarker>)}
+          <Outlet context={{ coords, locationSearched ,draggableMarker}} />
         </Map>
 
         {/* Floating Style Pill (Bottom Center) */}
@@ -171,9 +355,9 @@ export default function MapPage(): React.JSX.Element {
               onChange={(e) => setStyle(e.target.value as StyleKey)}
               className="bg-transparent text-white text-xs font-bold uppercase tracking-widest outline-none cursor-pointer"
             >
-              <option value="default">Standard</option>
-              <option value="openstreetmap">Detailed</option>
-              <option value="openstreetmap3d">3D Terrain</option>
+              <option className="text-slate-800 bg-slate-600 font-bold" value="default">Standard</option>
+              <option className="text-slate-800 bg-slate-600 font-bold" value="openstreetmap">Detailed</option>
+              <option className="text-slate-800 bg-slate-600 font-bold" value="openstreetmap3d">3D Terrain</option>
             </select>
           </div>
         </div>
@@ -402,3 +586,5 @@ export default function MapPage(): React.JSX.Element {
                             <input list="browsers" name="browser" id="browser">
  
  */
+
+
